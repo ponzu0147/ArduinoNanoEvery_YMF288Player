@@ -2,7 +2,7 @@
 // 簡易 S98 Player for GMC-MOD01
 // IO高速版(Nano Every専用）※24MHz駆動?!
 // Programmed by ponzu0147
-// ver0.5.2
+// ver0.5.3
 //
 // 【本プログラムの動作に必要なライブラリ】
 //  ・TimerCounterライブラリ（https://github.com/rcmolina/MaxDuino_v1.54）
@@ -17,6 +17,7 @@
 //　・S98プレイヤを作ってみる（http://risky-safety.org/zinnia/sdl/works/fmgen/s98sdl/）
 //　・YM2608 OPNA アプリケーションマニュアル
 //
+#define __AVR_ATmega4809__
 
 #include <SPI.h>
 #include <SdFat.h>
@@ -27,6 +28,21 @@ TimerCounter Timer1;              // preinstatiate
 unsigned short TimerCounter::pwmPeriod = 0;
 unsigned char TimerCounter::clockSelectBits = 0;
 void (*TimerCounter::isrCallback)() = NULL;
+
+// interrupt service routine that wraps a user defined function supplied by attachInterrupt
+#ifdef __AVR_ATmega4809__
+ISR(TCA0_OVF_vect)
+{
+  Timer1.isrCallback();
+  /* The interrupt flag has to be cleared manually */
+  TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
+}
+#else //__AVR_ATmega328P__
+ISR(TIMER1_OVF_vect)
+{
+  Timer1.isrCallback();
+}
+#endif
 
 #include <Wire.h>                       //I2C ライブラリ
 
@@ -78,9 +94,12 @@ class OPN3L_MDL {
     }
     // モジュールリセット
     void reset() {
-      digitalWrite(RST, LOW);  // モジュールリセット
-      delayMicroseconds(100); // min. 25us
-      digitalWrite(RST, HIGH);
+      PORTD.OUT &= ~_BV(3);
+      delayMicroseconds(1000);
+      PORTD.OUT |= _BV(3);
+//      digitalWrite(RST, LOW);  // モジュールリセット
+//      delayMicroseconds(100); // min. 25us
+//      digitalWrite(RST, HIGH);
       delay(100);
     }
     // レジスタライト
