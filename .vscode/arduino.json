@@ -1,0 +1,5 @@
+{
+    "board": "arduino:megaavr:nona4809",
+    "configuration": "mode=off,clock=24internal",
+    "sketch": "sketch_mar14c_20220328\\sketch_mar14c_20220328.ino"
+}

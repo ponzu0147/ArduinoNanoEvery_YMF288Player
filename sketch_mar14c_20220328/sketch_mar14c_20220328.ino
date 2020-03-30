@@ -1,11 +1,14 @@
 //
 // 簡易 S98 Player for GMC-MOD01
-// IO高速版(Nano Every専用）※24MHz駆動
+// IO高速版(Nano Every専用）※24MHz駆動?!
 // Programmed by ponzu0147
+// ver0.5.1
 //
 // 【本プログラムの動作に必要なライブラリ】
-//　・TimerCounterライブラリ（https://github.com/rcmolina/MaxDuino_v1.54）
+//  ・TimerCounterライブラリ（https://github.com/rcmolina/MaxDuino_v1.54）
+//  ・SPIライブラリ
 //  ・SdFatライブラリ
+//  ・Wireライブラリ
 //
 // 【参考】
 //  ・YMF288変換基板（http://gimic.jp/index.php?GMC-MOD01%E8%AA%AC%E6%98%8E）
@@ -25,21 +28,6 @@ TimerCounter Timer1;              // preinstatiate
 unsigned short TimerCounter::pwmPeriod = 0;
 unsigned char TimerCounter::clockSelectBits = 0;
 void (*TimerCounter::isrCallback)() = NULL;
-
-// interrupt service routine that wraps a user defined function supplied by attachInterrupt
-#ifdef __AVR_ATmega4809__
-ISR(TCA0_OVF_vect)
-{
-  Timer1.isrCallback();
-  /* The interrupt flag has to be cleared manually */
-  TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
-}
-#else //__AVR_ATmega328P__
-ISR(TIMER1_OVF_vect)
-{
-  Timer1.isrCallback();
-}
-#endif
 
 #include <Wire.h>                       //I2C ライブラリ
 
@@ -121,7 +109,6 @@ class OPN3L_MDL {
     }
   private:
 
-
     // データバスセット
     void write_data(unsigned char dat) {
       PORTA.OUT = (PORTA.OUT&0B11111100)|((dat)&0B00000001|(dat>>4)&0B00000010);
@@ -129,26 +116,7 @@ class OPN3L_MDL {
       PORTC.OUT = (PORTC.OUT&0B10111111)|((dat<<4)&0B01000000);
       PORTE.OUT = (PORTE.OUT&0B11110111)|((dat>>3)&0B00001000);
       PORTF.OUT = (PORTF.OUT&0B11001111)|((dat)&0B00010000)|((dat<<4)&0B00100000);
-
-      /* 
-      if (bitRead(dat, 0)) {PORTA.OUT |= _BV(0);}
-      else {PORTA.OUT &= ~_BV(0);}
-      if (bitRead(dat, 1)) {PORTF.OUT |= _BV(5);}
-      else {PORTF.OUT &= ~_BV(5);}
-      if (bitRead(dat, 2)) {PORTC.OUT |= _BV(6);}
-      else {PORTC.OUT &= ~_BV(6);}
-      if (bitRead(dat, 3)) {PORTB.OUT |= _BV(2);}
-      else {PORTB.OUT &= ~_BV(2);}
-      if (bitRead(dat, 4)) {PORTF.OUT |= _BV(4);}
-      else {PORTF.OUT &= ~_BV(4);}
-      if (bitRead(dat, 5)) {PORTA.OUT |= _BV(1);}
-      else {PORTA.OUT &= ~_BV(1);}
-      if (bitRead(dat, 6)) {PORTE.OUT |= _BV(3);}
-      else {PORTE.OUT &= ~_BV(3);}
-      if (bitRead(dat, 7)) {PORTB.OUT |= _BV(0);}
-      else {PORTB.OUT &= ~_BV(0);} */
     }
-
 
     void law_write(unsigned char ifadr, unsigned char adr, unsigned char dat) {
       PORTD.OUT |= _BV(0);
@@ -217,8 +185,10 @@ void setup() {
   Serial.begin(138240);
   int i;
 
-  for (uint8_t i = 0; i < 8; i++) // Arduino Pin初期化
-    pinMode(data_pins[i], OUTPUT);
+  // Arduino Pin初期化
+  for (uint8_t i = 0; i < 8; i++) {
+      pinMode(data_pins[i], OUTPUT);
+  }
   pinMode(A0_, OUTPUT);
   pinMode(A1_, OUTPUT);
   pinMode(RD, OUTPUT);
@@ -236,12 +206,10 @@ void setup() {
 
   root.open("/");  //SDカードのルートフォルダ
   String listTemp = "";
-//  file.openNext(&root, O_RDONLY);//System Volum
   while (file.openNext(&root, O_RDONLY)) {
     file.getName(tmp,32);
     String name = tmp;
     if(name !="System Volume Information"){
-    //Serial.println(name);
       listTemp += name;
       listTemp += ",";
       }
@@ -284,11 +252,9 @@ void setup() {
   // S98ヘッダ情報取得
   dataFile.seekSet(0x0);
   dataFile.read(&header, sizeof(header));
-  //Serial.println(sizeof(header));
   
   // データ先頭へシーク
   dataFile.seekSet(header.DataPtr);
-  //Serial.println(header.DataPtr);
 
   // タイマ割込宣言
   // 1sync期間毎に割込を掛けるよう設定
@@ -307,11 +273,11 @@ void setup() {
 void loop() {
   int value;
 //  float volt;
-//  value = analogRead( A7);
+//  value = analogRead(A7);
   value = analogRead(A7);
 
-  //Serial.println( value);
-  //Serial.println( volt);
+  //Serial.println(value);
+  //Serial.println(volt);
 
 char var = Serial.read();
 
@@ -362,15 +328,12 @@ void S98Play() {
   unsigned char devadr, adr, dat;
   unsigned char *p;
    
-  
    // Sync wait中はwaitカウントを減じて関数を抜ける
     if (loop_count != 0) {
     loop_count--;
     return;
     }
-
    
-
   do {
     // 再生フラグ割り込み判定
     if (f_flag | p_flag | r_flag) {
@@ -403,7 +366,6 @@ void S98Play() {
     }
     
     //dataFile.read(&devadr,1); 
-      
     //Serial.println((unsigned char)devadr,HEX);
     switch (devadr) {
       case 0x00: { // SSG/FM共通部/リズム/FM ch1-3
@@ -441,8 +403,6 @@ void S98Play() {
             PORTD.OUT &= ~_BV(3);
             delayMicroseconds(1000);
             PORTD.OUT |= _BV(3);
-            //dataFile = dir.openNextFile();
-            //dataFile = SD.open("hoge2.s98");
           }
           if (r_flag|f_flag) {
             r_flag = 0;
@@ -472,13 +432,11 @@ void S98Play() {
           dataFile.seekSet(0x0);
           dataFile.read(&header, sizeof(header));
 
-
           // データ先頭へシーク
           dataFile.seekSet(header.DataPtr);
           Timer1.detachInterrupt();
           attachTimerOne();
           return;
-      
     }
   } while (1);
 }
