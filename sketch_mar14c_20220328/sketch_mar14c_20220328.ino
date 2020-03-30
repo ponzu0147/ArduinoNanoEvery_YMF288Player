@@ -2,7 +2,7 @@
 // 簡易 S98 Player for GMC-MOD01
 // IO高速版(Nano Every専用）※24MHz駆動?!
 // Programmed by ponzu0147
-// ver0.5.1
+// ver0.5.2
 //
 // 【本プログラムの動作に必要なライブラリ】
 //  ・TimerCounterライブラリ（https://github.com/rcmolina/MaxDuino_v1.54）
@@ -17,7 +17,6 @@
 //　・S98プレイヤを作ってみる（http://risky-safety.org/zinnia/sdl/works/fmgen/s98sdl/）
 //　・YM2608 OPNA アプリケーションマニュアル
 //
-#define __AVR_ATmega4809__
 
 #include <SPI.h>
 #include <SdFat.h>
@@ -37,11 +36,6 @@ unsigned int ADR;
 byte data;
 char ascii[16];
 
-// 演奏するS98形式ファイル名
-// SDライブラリの制約から8+3形式のファイル名のみ対応
-//
-//#define F_NAME  "hoge2.s98"
-
 // GMC-MOD01関連Pin定義
 //
 // Pin 0, 1  はシリアル通信用に予約（今回は未使用）
@@ -57,7 +51,6 @@ static const int RD = 17;                           // Read Enable
 static const int CS = 20;                           // Chip Select
 
 // SDカード CS Pin定義
-// 10pin以外には設定しないが吉
 //
 const int chipSelect = 10; // SDカードCS pin
 
