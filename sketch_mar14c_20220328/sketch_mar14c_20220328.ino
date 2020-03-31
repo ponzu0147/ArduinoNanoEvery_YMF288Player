@@ -2,7 +2,7 @@
 // 簡易 S98 Player for GMC-MOD01
 // IO高速版(Nano Every専用）※24MHz駆動?!
 // Programmed by ponzu0147
-// ver0.5.3
+// ver0.5.4
 //
 // 【本プログラムの動作に必要なライブラリ】
 //  ・TimerCounterライブラリ（https://github.com/rcmolina/MaxDuino_v1.54）
@@ -94,12 +94,9 @@ class OPN3L_MDL {
     }
     // モジュールリセット
     void reset() {
-      PORTD.OUT &= ~_BV(3);
-      delayMicroseconds(1000);
+      PORTD.OUT &= ~_BV(3);  // モジュールリセット
+      delayMicroseconds(1000);  // min. 25us
       PORTD.OUT |= _BV(3);
-//      digitalWrite(RST, LOW);  // モジュールリセット
-//      delayMicroseconds(100); // min. 25us
-//      digitalWrite(RST, HIGH);
       delay(100);
     }
     // レジスタライト
@@ -276,9 +273,7 @@ void setup() {
   else
     Timer1.attachInterrupt(S98Play, 900 * header.Timer );
 
-
 }
-
 
 // Loop関数
 //
@@ -320,17 +315,17 @@ char var = Serial.read();
     }
   }
   else {
-    if ( value < 550) {
+    if ( value < 550 ) {
       f_flag = 1;
     }
-    else if ( value < 700) {
+    else if ( value < 700 ) {
       p_flag = 1;
     }
-    else if ( value < 800) {
+    else if ( value < 800 ) {
       r_flag = 1;
     }
   }
-  delay(10000);
+  delay(3000);
 }
 
 // S98データ演奏関数
@@ -348,7 +343,7 @@ void S98Play() {
    
   do {
     // 再生フラグ割り込み判定
-    if (f_flag | p_flag | r_flag) {
+    if ( f_flag | p_flag | r_flag ) {
          devadr = 0xFD;
          rep =1; //リピートフラグ再設定
       if (f_flag) {
